@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patentees &amp; Subscribers — 3D Network</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #ffffff;
+  color: #1a1a2e;
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#container { position: relative; width: 100vw; height: 100vh; }
+canvas { display: block; }
+
+#controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 12px;
+  padding: 20px;
+  width: 290px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+}
+
+#controls h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 21px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 2px;
+}
+
+#controls .subtitle {
+  font-size: 11px;
+  color: #777;
+  margin-bottom: 16px;
+  font-weight: 300;
+}
+
+.control-group { margin-bottom: 14px; }
+
+.control-group label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.slider-row { display: flex; align-items: center; gap: 10px; }
+
+.slider-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: #d4d4d4;
+  border-radius: 2px;
+  outline: none;
+}
+
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #6b3a2a;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.slider-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b3a2a;
+  min-width: 20px;
+  text-align: right;
+}
+
+#search-box {
+  width: 100%;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #1a1a2e;
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+}
+
+#search-box:focus { border-color: #6b3a2a; }
+#search-box::placeholder { color: #aaa; }
+
+.company-toggles { display: flex; flex-direction: column; gap: 5px; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.toggle-row:hover { background: rgba(0,0,0,0.03); }
+
+.toggle-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid;
+  transition: all 0.2s;
+}
+
+.toggle-dot.active { box-shadow: 0 0 6px; }
+
+.toggle-label { font-size: 11.5px; font-weight: 400; color: #2a2a2a; }
+.toggle-count { margin-left: auto; font-size: 10px; color: #999; font-weight: 300; }
+
+#stats {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+}
+
+#stats span { font-size: 12px; color: #777; font-weight: 300; }
+#stats span strong { color: #6b3a2a; font-weight: 600; }
+
+#hint {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+  font-size: 11px;
+  color: #999;
+}
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(255,255,255,0.97);
+  border: 1px solid #c0c0c0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #1a1a2e;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.12s;
+  max-width: 420px;
+}
+
+#tooltip .tip-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+#tooltip .tip-companies { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+#tooltip .tip-tag {
+  font-size: 9.5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+#tooltip .tip-cite {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.5;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 6px;
+}
+
+#toggle-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 11;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  font-size: 18px;
+  color: #555;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+#toggle-controls:hover { background: #f0f0f0; }
+
+#controls.hidden {
+  transform: translateX(-310px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#controls {
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+</style>
+</head>
+<body>
+<div id="container">
+  <canvas id="canvas"></canvas>
+
+  <div id="toggle-controls" title="Toggle controls">&#9776;</div>
+
+  <div id="controls">
+    <h1>Patentees &amp; Subscribers</h1>
+    <div class="subtitle">Selected patentees and subscribers of six 17th century colonial enterprises.</div>
+
+    <div class="control-group">
+      <label>Search</label>
+      <input type="text" id="search-box" placeholder="Type a name...">
+    </div>
+
+    <div class="control-group">
+      <label>Min. Companies</label>
+      <div class="slider-row">
+        <input type="range" id="min-slider" min="1" max="6" value="1" step="1">
+        <span class="slider-value" id="min-value">1</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Show Companies</label>
+      <div class="company-toggles" id="toggles"></div>
+    </div>
+  </div>
+
+  <div id="stats">
+    <span>Showing <strong id="stat-nodes">0</strong> people &middot; <strong id="stat-links">0</strong> links</span>
+  </div>
+
+  <div id="hint">Click &amp; drag to rotate &middot; Scroll to zoom &middot; Hover for names</div>
+
+  <div id="tooltip"></div>
+</div>
+
+<script>
+// Toggle controls visibility
+document.getElementById('toggle-controls').addEventListener('click', function() {
+  const controls = document.getElementById('controls');
+  controls.classList.toggle('hidden');
+  this.innerHTML = controls.classList.contains('hidden') ? '&#9776;' : '&#10005;';
+});
+
+const COMPANIES = {
+  "Providence Island": { color: 0xa63c20, hex: "#a63c20" },
+  "Virginia":          { color: 0x2d6a4f, hex: "#2d6a4f" },
+  "Somers Island":     { color: 0x5a3e9e, hex: "#5a3e9e" },
+  "Massachusetts Bay": { color: 0xb07d10, hex: "#b07d10" },
+  "Connecticut River": { color: 0x1a6b8a, hex: "#1a6b8a" },
+  "Council for New England": { color: 0x8c3553, hex: "#8c3553" }
+};
+
+const CITATIONS = {
+  "Providence Island": 'Kupperman, Karen Ordahl, \u2018Providence Island Company Members\u2019, in <i>Providence Island, 1630\u20131641: The Other Puritan Colony</i> (Cambridge: Cambridge University Press, 1993), pp. 357\u201360.',
+  "Virginia": 'Kingsbury, Susan Myra (ed.), <i>The Records of the Virginia Company of London</i>, 4 vols. (Washington, DC: Library of Congress, 1906\u201335).',
+  "Somers Island": 'Lefroy, John Henry, <i>Memorials of the Discovery and Early Settlement of the Bermudas or Somers Islands, 1515\u20131685</i>, vol. I (Bermuda: The Bermuda Historical Society and The Bermuda National Trust, 1981).',
+  "Massachusetts Bay": 'Shurtleff, Nathaniel B. (ed.), <i>Records of the Governor and Company of the Massachusetts Bay in New England</i> (Boston: W. White, 1854).',
+  "Connecticut River": 'Hoadly, C. J., <i>The Warwick Patent</i> (Hartford: Case, Lockwood &amp; Brainard, 1902).',
+  "Council for New England": 'Thorpe, Francis Newton (ed.), \u2018The Charter of New England: 1620\u2019, in <i>The Federal and State Constitutions, Colonial Charters, and Other Organic Laws of the States, Territories, and Colonies Now or Heretofore Forming the United States of America</i> (Washington, DC: Government Printing Office, 1909); Deane, Charles (ed.), <i>Records of the Council for New England</i> (Cambridge, MA: Press of John Wilson &amp; Son, 1867).'
+};
+
+const raw = {
+"Providence Island": ["William Ball","Gabriel Barbor","Thomas Barnardiston","Sir Thomas Barrington","Godfrey Bosvile","Sir Thomas Cheeke","Henry Darley","John Dyke","James Fiennes","Lord Saye and Sele","Gregory Gawsell","Sir Gilbert Gerard","John Graunt","Lord Brooke","John Gurdon","Sir Edward Harwood","Richard Knightley","John Michell","Lord Mandeville","Sir Edmond Moundeford","John Pym","Earl of Holland","Sir Nathaniel Rich","Earl of Warwick","John Robartes","Sir Benjamin Rudyerd","Oliver St. John","Christopher Sherland","Thomas Symons","John Upton","Sir William Waller","William Woodcock","William Jessop"],
+"Virginia": ["John Ferrar","Sir William Fleetwood","Sir George Calvert","'Mr Sherwin'","Sir Thomas Denton","Sir Edward Conway","Sir Thomas Grantham","Sir Charles Barkly","Sir Edward Cecil","'Mr Art'","Sir Robert Heath","Thomas Trevor","Sir John Arundell","James Bag","Sir Nicholas Tufton","Sir John Walter","Sir George Goring","Sir John Stradling","Robert Bateman","Sir Baptist Hicks","Martin Bond","Sir Arthur Ingram","Sir Thomas Middleton","'Mr Lewson'","Sir Robert Mansfield","Thomas Bond","Sir Dudley Digges","Sir George Moore","Sir Humphrey May","Sir John Cutts","Sir John Ratcliff","Sir Edmund Bowyer","George Garrett","Sir Henry Fane","Sir Heneage Finch","John Delbridge","Edward Spencer","Sir Thomas Jermin","Sir Philip Cary","Sir James Perrot","Lord Wriothesley","William Oxenbridge","John Moore","John Drake","Maurice Abbott","'Mr Dyot'","Sir John Scudamore","Sir Oliver Cromwell","Sir Arthur Harris","Richard Knightley","Sir Arthur Mannering","Sir Robert Cotton","Sir John Saint John","John Selden","Earl of Warwick","'Mr Harris'","Sir Nathaniel Rich","Sir Henry Mileme","'Mr Worsman'","Sir Humphrey Hamford","'Mr Copse'","Sir Samuel Argall","'Mr Binge'","Sir Thomas Wrath","'Mr May'","'Mr Cowell'","Sir Thomas Smith","Robert Gore","Sir Thomas Button","'Mr Wilkinson'","Sir John Culpeper","John Barnard","Sir Thomas Cheeke","'Mr Moore'","Sir Thomas Hewitt","'Mr Man'","Edward Lukin","Sir Ferdinando Gorge","Abraham Chamberlin","Sir John Wolstenholme","John West","'Mr Alderman Johnson'","'Mr Powston'","'Mr Doctor Medust'","Elias Roberts","'Mr Mould'","'Mr Bateman'","'Mr Pennington'","'Mr Gibbs'","'Captain Turner'","'Mr Leate'","George Tucker","Nathaniel Butler","'Mr Dorrell'","'Mr Llewellyn'","'Mr Tickner'","'Mr Bell'","Edward Palmer","'Mr Stiles'","'Mr Baynham'","William Palmer","'Mr Willmore'","Richard Edwards","Thomas Jadwin","'Mr Moorer'","'Mr Nevell'","John Dike","'Mr Rogers Junior'","George Smith Grocer","John Woodall","Robert Smith Under-Chamberlain","'Mr Sparrow'","'Mr Man Junior'","'Mr Canning'","'Mr Roberts Junior'","Humphrey Slany","'Mr West'","'Mr Thayer'","'Mr Pearce'","Edward Bennit","'Mr Cason'","'Mr Fesant'","'Mr Robins'","'Mr Wrote'","Thomas Wale","'Mr Steward'","'Mr Lawes'","John Wrothe","'Mr Townsend'","'Mr Palavisine'","'Mr Essington'","Christopher Barron","Edward Ditchfield","Robert Johnson","John Dyke","Sir Thomas Barrington","Gabriel Barbor","Sir Gilbert Gerard","Sir Edward Harwood","Earl of Holland","Oliver St. John","Matthew Cradock","Richard Bushrod","Simon Whetcombe","Sir Richard Saltonstall","Isaac Johnson","John Humfry","Sir Henry Rosewell","George Harwood","George Sandys","Sir Edwin Sandys","Nicholas Farrer","Sir John Danvers","John Farrer","Thomas Kiteley","Thomas Wheatley","Richard Caswell","Thomas Shepherd","John Cuffe","Gabriel Barber","William Deerblock","Anthony Withers","George Scott","Edward Hackett","John Kirrell","Thomas Morris","William Webb","Richard Bull","William Nicholls","Patrick Copeland","William Browne","George Smyth","Richard Tomlins","Edward Brewster","William Ewens","Thomas Winston","George Swinhowe","Edward Ryder","Gilbert Morewood","Edmund Morgan"],
+"Somers Island": ["Countess of Bedford","Lord Cavendish","Lord Paget","Earl of Pembroke","Earl of Southampton","Sir Anthony Aucher","Sir Lionel Cranfield","Sir Dudley Digges","Sir Richard Grobham","Sir Lawrence Hide","Sir Thomas Hogan","Sir John Howard","Sir Robert Mansell","Sir John Mericke","Sir Robert Rich","Sir Edwin Sandys","Sir Samuel Sandys","Sir Richard Smith","Sir Thomas Smith","Sir John Watts","Sir Ralph Winwood","William Caraway","Richard Chamberlaine","Jeremy Heydon","Nicholas Hide","Richard Martin","George Thorpe","John Walter","John Wolstenholme","John Wrath","Maurice Abbott","Anthony Abby","William Adderley","Charles Anthony","John Banks","John Barnard","George Barkeley","Christopher Baron","Nicholas Benson","John Bretton","Edward Bishop","Arthur Brainfield","William Campage","Abraham Cartwright","Richard Caswell","Abraham Chamberlaine","George Chamberlaine","Thomas Church","Christopher Clitherow","Allen Cotton","Thomas Conell","Abraham Dawes","Gideon De Laurie","John Delbridge","John Dike","Edward Ditchfield","Richard Edwards","George Etheridge","Nicholas Exton","Nicholas Farrer","William Fellgate","John Fletcher","Edward Fletcher","John Gearing","Francis Giles","Robert Gore","William Greenwell","George Haleman","Ralph Hamer","Leonard Harwood","John Herne","John Heyward","Anthony Hinton","John Hodges","Philip Jacobson","Thomas Jadwin","Thomas John","Robert Johnson","John Kerell","Ralph Kinge","Thomas Lewis","Edward Lukin","Richard Maplesdon","Edward Martin","Richard Mercer","William Nicholls","Thomas Norcott","Robert Offley","John Osborn","William Palmer","William Payne","Robert Phipps","Richard Poulson","Hildebrand Prason","William Quick","George Rich","Elias Roberts","Richard Rogers","Edmund Scott","George Scott","Matthew Shepherd","Cleophas Smith","George Smith","Robert Smith","Warren Smith","Abraham Speckhardie","George Swinhowe","Richard Tomlins","Henry Tymberdale","Thomas Wale","Rice Webb","Thomas Webb","William Webster","John Weld","William Welby","John West","Thomas Wheatley","John Woodall","Gabriel Barbor","John Dyke","Lord Saye","Sir Gilbert Gerard","John Graunt","Sir Edward Harwood","Richard Knightley","John Pym","Earl of Holland","Sir Nathaniel Rich","Earl of Warwick","Sir Benjamin Rudyerd"],
+"Massachusetts Bay": ["Thomas Adams","Samuel Aldersey","Richard Andrewes","Thomas Andrewes","Henry Archer","Andrew Arnold","William Backhouse","Daniel Ballard","Sir Nathaniel Barnardiston","'Mr Bateman'","Richard Bellingham","'Mr Bilson'","John Bowles","Job Bradshaw","Joseph Bradshaw","Simon Bradstreet","Sir William Brereton","Francis Bridges","Francis Bright","John Browne","Kellam Browne","Samuel Browne","'Mr Burnell'","Richard Bushrod","'Mrs A. C.'","Joseph Caron","'Mr Clark'","William Coddington","William Colibron","Samuel Cole","Edward Cook","Christopher Coulson","Matthew Cradock","George Foxcroft","John Glover","Josse Glover","Thomas Goffe","John Goodwin","Anne Harvey","George Harwood","Thomas Hewson","Francis Higginson","Joseph Hills","Daniel Hodson","Atherton Hough","William Hubbard","John Humfry","Thomas Hutchins","Edward Ironside","Sir Brian Janson","Isaac Johnson","Robert Keane","Francis Kirby","Thomas Leverett","Roger Ludlowe","John Malbon","Nathaniel Manesty","Abraham Mellows","Thomas Marsh","Peter Milburne","Matthias Nicholls","Increase Nowell","Philip Nye","Joseph Oldfield","Abraham Palmer","'Mr Paynter'","Herbert Pelham","'Mr Pemberton'","William Perkins","Richard Perry","Hugh Peter","George Phillips","John Pocock","Thomas Puliston","William Pyncheon","John Revell","Sir Henry Rosewell","Edward Rossiter","Owen Rowe","Sir Richard Saltonstall","Samuel Sharpe","Thomas Sharpe","Samuel Skelton","John Smyth","Thomas Southcote","John Spenser","William Spurstowe","Thomas Steevens","Elias Stileman","Richard Tuffneale","Samuel Vassall","William Vassall","John Venn","Thomas Wade","Thomas Waldegrave","Henry Waller","Nathaniel Ward","'Mr Warren'","George Way","Francis Webbe","Nicholas West","Simon Whetcombe","Charles Whichcote","Edmund White","John White","Richard White","Daniel Winch","John Winthrop","'Mr Woodgate'","Nathaniel Wright","Sir John Yonge","James Young","Richard Young","Earl of Warwick","John Endecott","Theophilus Eaton","Sir Nathaniel Rich"],
+"Connecticut River": ["Lord Saye and Sele","Lord Brooke","Lord Rich","Earl of Warwick","Charles Fiennes","Sir Nathaniel Rich","Sir Richard Saltonstall","Richard Knightley","John Pym","John Hampden","John Humphrey","Herbert Pelham","Henry Lawrence","Henry Darley","Sir Arthur Haselrig","George Fenwick","Lion Gardiner","Sir Matthew Boynton","Edward Hopkins","Robert Barrington","Philip Nye","'Mr Jessup'"],
+"Council for New England": ["Duke of Lennox","Duke of Buckingham","Marquess Hamilton","Earl of Pembroke","Earl of Arundel","Earl of Holderness","Earl of Hathe","Earl of Southampton","Earl of Salisbury","Earl of Warwick","Earl of Stirling","Earl of Somerset","Viscount Haddington","Baron Zouche","Baron Sheffield","Baron Gorges","Lord Great Chamberlain","Sir Edward Seymour","Sir Robert Mansell","Sir Edward Zouch","Sir Dudley Digges","Sir Thomas Roe","Sir Ferdinando Gorges","Sir Francis Popham","Baron Cobham","Sir Thomas Gates","Sir Richard Hawkins","Sir Richard Edgcombe","Sir Allen Apsley","Sir Warwick Hele","Sir Richard Catchmay","Sir John Bourchier","Sir Nathaniel Rich","Sir Edward Giles","Sir Giles Mompesson","Sir Thomas Wroth","Sir Henry Spelman","Sir Kenelm Digby","Sir Christopher Garner","Dr Matthew Sutcliffe","Dr Barnabe Goche","Captain Samuel Argall","Captain Robert Gorges","'Captain Love'","'Captain Chudley'","'Captain Masson'","'Captain Wiggin'","'Mr Trear'","'Mr Sherly'","'Mr Peirce'","'Mr Delbordge'","Abraham Jennings","Robert Heath","Henry Bourchier","John Drake","Raleigh Gilbert","George Chudley","Thomas Hamon","John Argall","Robert Aldworth","Gyles Elbridge","John Gorges","Walter Norton","Thomas Coppin","Joel Woolsey","George Norton","Robert Rainsford","Seth Bull","Dixie Bull","Matthew Bradley"]
+};
+
+// Build person data
+const personMap = {};
+for (const [comp, members] of Object.entries(raw)) {
+  for (const name of members) {
+    if (!personMap[name]) personMap[name] = { name, companies: new Set() };
+    personMap[name].companies.add(comp);
+  }
+}
+const allPersons = Object.values(personMap).map(p => ({ name: p.name, companies: [...p.companies], count: p.companies.size }));
+
+let activeCompanies = new Set(Object.keys(COMPANIES));
+let minCompanies = 1;
+let searchTerm = "";
+
+// Three.js setup
+const canvas = document.getElementById('canvas');
+const W = window.innerWidth, H = window.innerHeight;
+canvas.width = W; canvas.height = H;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0xffffff);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, W / H, 1, 10000);
+camera.position.set(0, 0, 500);
+
+// Ambient + directional light
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+dirLight.position.set(200, 300, 400);
+scene.add(dirLight);
+
+// Groups
+const linkGroup3D = new THREE.Group();
+const nodeGroup3D = new THREE.Group();
+scene.add(linkGroup3D);
+scene.add(nodeGroup3D);
+
+// Orbit controls (manual)
+let isDragging = false, prevMouse = { x: 0, y: 0 };
+let rotX = 0, rotY = 0;
+let targetRotX = 0, targetRotY = 0;
+let zoomDist = 500;
+
+canvas.addEventListener('mousedown', e => {
+  if (e.target === canvas) { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; }
+});
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (isDragging) {
+    targetRotY += (e.clientX - prevMouse.x) * 0.005;
+    targetRotX += (e.clientY - prevMouse.y) * 0.005;
+    targetRotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotX));
+    prevMouse = { x: e.clientX, y: e.clientY };
+  }
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomDist = Math.max(100, Math.min(2000, zoomDist + e.deltaY * 0.5));
+}, { passive: false });
+
+// Raycaster for hover
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let hoveredObj = null;
+let nodeMeshes = [];
+let nodeDataMap = new Map();
+
+canvas.addEventListener('mousemove', e => {
+  mouse.x = (e.clientX / W) * 2 - 1;
+  mouse.y = -(e.clientY / H) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(nodeMeshes);
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    const data = nodeDataMap.get(obj);
+    if (data) {
+      hoveredObj = obj;
+      let html = `<div class="tip-name">${data.name}</div>`;
+      if (data.type === "person") {
+        html += `<div class="tip-companies">`;
+        data.companies.forEach(c => {
+          html += `<span class="tip-tag" style="background:${COMPANIES[c].hex}18; color:${COMPANIES[c].hex}; border:1px solid ${COMPANIES[c].hex}44">${c}</span>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<div style="font-size:11px;color:#777">Company hub</div>`;
+        if (CITATIONS[data.name]) {
+          html += `<div class="tip-cite">${CITATIONS[data.name]}</div>`;
+        }
+      }
+      tooltip.innerHTML = html;
+      tooltip.style.opacity = 1;
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top = (e.clientY - 14) + 'px';
+      canvas.style.cursor = 'pointer';
+
+      // Highlight connected
+      highlightConnections(data);
+    }
+  } else {
+    if (hoveredObj) {
+      hoveredObj = null;
+      tooltip.style.opacity = 0;
+      canvas.style.cursor = 'grab';
+      clearHighlights();
+    }
+  }
+});
+
+// Simulation data
+let simNodes = [];
+let simLinks = [];
+let linkLines = [];
+
+function hexToThree(hex) { return new THREE.Color(hex); }
+
+function highlightConnections(data) {
+  // Dim everything first
+  nodeMeshes.forEach(m => {
+    const d = nodeDataMap.get(m);
+    m.material.opacity = 0.08;
+  });
+  linkLines.forEach(l => { l.material.opacity = 0.02; });
+
+  // Highlight the hovered node
+  hoveredObj.material.opacity = 1.0;
+
+  if (data.type === "person") {
+    const connectedCompanies = new Set(data.companies);
+    nodeMeshes.forEach(m => {
+      const d = nodeDataMap.get(m);
+      if (d && d.type === "company" && connectedCompanies.has(d.name)) m.material.opacity = 1.0;
+    });
+    linkLines.forEach((l, i) => {
+      if (simLinks[i] && simLinks[i]._sourceId === data.id) l.material.opacity = 0.6;
+    });
+  } else {
+    // Company hover
+    linkLines.forEach((l, i) => {
+      if (simLinks[i] && simLinks[i]._targetId === data.id) {
+        l.material.opacity = 0.6;
+        // Find source node mesh
+        nodeMeshes.forEach(m => {
+          const d = nodeDataMap.get(m);
+          if (d && d.id === simLinks[i]._sourceId) m.material.opacity = 1.0;
+        });
+      }
+    });
+  }
+}
+
+function clearHighlights() {
+  nodeMeshes.forEach(m => {
+    const d = nodeDataMap.get(m);
+    if (d) m.material.opacity = d.type === "company" ? 0.95 : 0.85;
+  });
+  linkLines.forEach(l => { l.material.opacity = 0.25; });
+}
+
+// Force simulation (simple spring-based in 3D)
+function simulate(nodes, links, iterations) {
+  // Initialize positions
+  const compNames = Object.keys(COMPANIES).filter(c => activeCompanies.has(c));
+  nodes.forEach((n, i) => {
+    if (n.type === "company") {
+      const ci = compNames.indexOf(n.name);
+      const angle = (ci / compNames.length) * Math.PI * 2;
+      const r = 180;
+      n.x = Math.cos(angle) * r;
+      n.y = Math.sin(angle) * r * 0.6;
+      n.z = Math.sin(angle * 0.5) * 80;
+    } else {
+      const spread = 300;
+      n.x = (Math.random() - 0.5) * spread;
+      n.y = (Math.random() - 0.5) * spread;
+      n.z = (Math.random() - 0.5) * spread;
+    }
+    n.vx = 0; n.vy = 0; n.vz = 0;
+  });
+
+  const nodeMap = {};
+  nodes.forEach(n => nodeMap[n.id] = n);
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const alpha = 0.3 * (1 - iter / iterations);
+
+    // Repulsion
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+        const force = (a.type === "company" || b.type === "company" ? 800 : 50) / (dist * dist);
+        const fx = dx / dist * force * alpha;
+        const fy = dy / dist * force * alpha;
+        const fz = dz / dist * force * alpha;
+        if (a.type !== "company") { a.vx += fx; a.vy += fy; a.vz += fz; }
+        if (b.type !== "company") { b.vx -= fx; b.vy -= fy; b.vz -= fz; }
+      }
+    }
+
+    // Attraction (links)
+    links.forEach(l => {
+      const s = nodeMap[l._sourceId], t = nodeMap[l._targetId];
+      if (!s || !t) return;
+      let dx = t.x - s.x, dy = t.y - s.y, dz = t.z - s.z;
+      let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      const target = 120;
+      const force = (dist - target) * 0.01 * alpha;
+      const fx = dx / dist * force;
+      const fy = dy / dist * force;
+      const fz = dz / dist * force;
+      if (s.type !== "company") { s.vx += fx; s.vy += fy; s.vz += fz; }
+      if (t.type !== "company") { t.vx -= fx; t.vy -= fy; t.vz -= fz; }
+    });
+
+    // Centering
+    nodes.forEach(n => {
+      if (n.type !== "company") {
+        n.vx -= n.x * 0.001 * alpha;
+        n.vy -= n.y * 0.001 * alpha;
+        n.vz -= n.z * 0.001 * alpha;
+      }
+    });
+
+    // Apply velocity with damping
+    nodes.forEach(n => {
+      if (n.type !== "company") {
+        n.x += n.vx; n.y += n.vy; n.z += n.vz;
+        n.vx *= 0.6; n.vy *= 0.6; n.vz *= 0.6;
+      }
+    });
+  }
+}
+
+function update() {
+  const filtered = allPersons.filter(p => {
+    const relevant = p.companies.filter(c => activeCompanies.has(c));
+    if (relevant.length === 0) return false;
+    if (p.count < minCompanies) return false;
+    if (searchTerm && !p.name.toLowerCase().includes(searchTerm)) return false;
+    return true;
+  });
+
+  const usedCompanies = new Set();
+  filtered.forEach(p => p.companies.forEach(c => { if (activeCompanies.has(c)) usedCompanies.add(c); }));
+
+  const companyNodes = [...usedCompanies].map(c => ({
+    id: `company_${c}`, name: c, type: "company", color: COMPANIES[c].color, hex: COMPANIES[c].hex
+  }));
+
+  const personNodes = filtered.map(p => ({
+    id: `person_${p.name}`, name: p.name, type: "person", count: p.count,
+    companies: p.companies.filter(c => activeCompanies.has(c))
+  }));
+
+  simNodes = [...companyNodes, ...personNodes];
+  simLinks = [];
+  personNodes.forEach(p => {
+    p.companies.forEach(c => {
+      simLinks.push({ _sourceId: p.id, _targetId: `company_${c}`, color: COMPANIES[c].color });
+    });
+  });
+
+  document.getElementById('stat-nodes').textContent = personNodes.length;
+  document.getElementById('stat-links').textContent = simLinks.length;
+
+  // Run simulation
+  simulate(simNodes, simLinks, 150);
+
+  // Clear old meshes
+  while (nodeGroup3D.children.length) nodeGroup3D.remove(nodeGroup3D.children[0]);
+  while (linkGroup3D.children.length) linkGroup3D.remove(linkGroup3D.children[0]);
+  nodeMeshes = [];
+  nodeDataMap = new Map();
+  linkLines = [];
+
+  const nodeMap = {};
+  simNodes.forEach(n => nodeMap[n.id] = n);
+
+  // Create link lines
+  simLinks.forEach(l => {
+    const s = nodeMap[l._sourceId], t = nodeMap[l._targetId];
+    if (!s || !t) return;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(s.x, s.y, s.z),
+      new THREE.Vector3(t.x, t.y, t.z)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color: l.color, transparent: true, opacity: 0.25 });
+    const line = new THREE.Line(geo, mat);
+    linkGroup3D.add(line);
+    linkLines.push(line);
+  });
+
+  // Create node spheres
+  simNodes.forEach(n => {
+    let radius, color, opacity;
+    if (n.type === "company") {
+      radius = 12;
+      color = n.color;
+      opacity = 0.95;
+    } else {
+      radius = 1.5 + n.count * 1.2;
+      color = n.companies.length > 1 ? 0x6b3a2a : COMPANIES[n.companies[0]].color;
+      opacity = 0.85;
+    }
+    const geo = new THREE.SphereGeometry(radius, n.type === "company" ? 24 : 12, n.type === "company" ? 24 : 12);
+    const mat = new THREE.MeshPhongMaterial({ color, transparent: true, opacity, shininess: 40 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(n.x, n.y, n.z);
+    nodeGroup3D.add(mesh);
+    nodeMeshes.push(mesh);
+    nodeDataMap.set(mesh, n);
+  });
+}
+
+// Toggles
+const togglesDiv = document.getElementById('toggles');
+for (const [name, data] of Object.entries(COMPANIES)) {
+  const row = document.createElement('div');
+  row.className = 'toggle-row';
+  const dot = document.createElement('div');
+  dot.className = 'toggle-dot active';
+  dot.style.borderColor = data.hex;
+  dot.style.background = data.hex;
+  dot.style.boxShadow = `0 0 6px ${data.hex}`;
+  const label = document.createElement('span');
+  label.className = 'toggle-label';
+  label.textContent = name;
+  const count = document.createElement('span');
+  count.className = 'toggle-count';
+  count.textContent = new Set(raw[name]).length;
+  row.appendChild(dot);
+  row.appendChild(label);
+  row.appendChild(count);
+  row.addEventListener('click', () => {
+    if (activeCompanies.has(name)) {
+      activeCompanies.delete(name);
+      dot.classList.remove('active');
+      dot.style.background = 'transparent';
+      dot.style.boxShadow = 'none';
+    } else {
+      activeCompanies.add(name);
+      dot.classList.add('active');
+      dot.style.background = data.hex;
+      dot.style.boxShadow = `0 0 6px ${data.hex}`;
+    }
+    update();
+  });
+  togglesDiv.appendChild(row);
+}
+
+document.getElementById('min-slider').addEventListener('input', function() {
+  minCompanies = +this.value;
+  document.getElementById('min-value').textContent = this.value;
+  update();
+});
+
+document.getElementById('search-box').addEventListener('input', function() {
+  searchTerm = this.value.toLowerCase();
+  update();
+});
+
+// Animation loop
+function animate() {
+  requestAnimationFrame(animate);
+
+  rotX += (targetRotX - rotX) * 0.08;
+  rotY += (targetRotY - rotY) * 0.08;
+
+  camera.position.x = Math.sin(rotY) * Math.cos(rotX) * zoomDist;
+  camera.position.y = Math.sin(rotX) * zoomDist;
+  camera.position.z = Math.cos(rotY) * Math.cos(rotX) * zoomDist;
+  camera.lookAt(0, 0, 0);
+
+  renderer.render(scene, camera);
+}
+
+// Handle resize
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+});
+
+update();
+animate();
+</script>
+</body>
+</html>
