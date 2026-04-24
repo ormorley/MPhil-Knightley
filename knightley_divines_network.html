@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fawsley Circle</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #ffffff;
+  color: #1a1a2e;
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#container { position: relative; width: 100vw; height: 100vh; }
+svg { width: 100%; height: 100%; display: block; }
+
+#controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 12px;
+  padding: 20px;
+  width: 290px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+#controls h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 2px;
+}
+#controls .subtitle {
+  font-size: 11px;
+  color: #777;
+  margin-bottom: 18px;
+  font-weight: 300;
+  line-height: 1.4;
+}
+#controls .hint {
+  font-size: 11px;
+  color: #555;
+  background: #f5f2ea;
+  border: 1px solid #e0d6bc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+.control-group { margin-bottom: 14px; }
+.control-group label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+#search-box {
+  width: 100%;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #1a1a2e;
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
+}
+#search-box:focus { border-color: #7a1f1a; }
+#search-box::placeholder { color: #aaa; }
+
+.btn-row { display: flex; gap: 6px; }
+.ctrl-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f5f5f5;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+.ctrl-btn:hover { background: #eaeaea; border-color: #bbb; }
+
+#stats {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+}
+#stats span { font-size: 12px; color: #777; font-weight: 300; }
+#stats span strong { color: #7a1f1a; font-weight: 600; }
+
+#legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  z-index: 10;
+  min-width: 210px;
+}
+#legend .legend-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+}
+#legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+#legend .legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#legend .legend-item-label {
+  font-size: 11px;
+  color: #555;
+  font-weight: 400;
+}
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(255,255,255,0.97);
+  border: 1px solid #c0c0c0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #1a1a2e;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.12s;
+  max-width: 380px;
+}
+#tooltip .tip-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #7a1f1a;
+  margin-bottom: 4px;
+}
+#tooltip .tip-rel {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+#tooltip .tip-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13.5px;
+  font-style: italic;
+  color: #555;
+  line-height: 1.5;
+  border-left: 2px solid #7a1f1a;
+  padding-left: 10px;
+  margin-bottom: 6px;
+}
+#tooltip .tip-source {
+  font-size: 9.5px;
+  color: #888;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.link-path { fill: none; transition: stroke-opacity 0.18s, stroke-width 0.18s; cursor: pointer; }
+.link-path.default { stroke: #000000; stroke-opacity: 0.7; stroke-width: 2.2; }
+.link-path.core { stroke: #000000; stroke-opacity: 0.95; stroke-width: 4.5; }
+.link-path.brokered-result { stroke: #000000; stroke-opacity: 0.75; stroke-width: 2.6; stroke-dasharray: 12 8; }
+.link-path.kinship { stroke: #8a8a8a; stroke-opacity: 0.7; stroke-width: 2.2; stroke-dasharray: 2 7; stroke-linecap: round; }
+.link-path.highlighted { stroke-opacity: 1 !important; stroke-width: 6 !important; stroke-dasharray: none !important; }
+.link-path.dimmed { stroke-opacity: 0.05 !important; }
+
+.link-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: calc(22px * var(--edge-label-scale, 1));
+  font-weight: 500;
+  fill: #5a4530;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,0.97);
+  stroke-width: 6px;
+}
+
+.node-group { cursor: pointer; }
+.node-circle {
+  stroke: #fff;
+  stroke-width: 2.5;
+  transition: stroke-width 0.15s;
+}
+.node-group:hover .node-circle { stroke-width: 4.5; }
+.node-group.dimmed { opacity: 0.12; }
+
+.node-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: calc(32px * var(--label-scale, 1));
+  font-weight: 700;
+  fill: #1a1a2e;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,0.97);
+  stroke-width: 6px;
+}
+.node-label.central {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: calc(52px * var(--label-scale, 1));
+  font-weight: 700;
+  fill: #7a1f1a;
+}
+.node-label.clergy {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: calc(40px * var(--label-scale, 1));
+  font-weight: 700;
+  fill: #1a1a2e;
+}
+
+.bubble {
+  fill-opacity: 0.4;
+  stroke-width: 2.8;
+  stroke-dasharray: 12 10;
+}
+.bubble.fawsley { fill: #f0ece0; stroke: #3f5a32; }
+.bubble.trustees { fill: #fceeee; stroke: #7a1f1a; }
+.bubble.gentry { fill: #e7eaf2; stroke: #2d3a5a; }
+
+.bubble-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-anchor: middle;
+}
+.bubble-label.fawsley { fill: #3f5a32; }
+.bubble-label.trustees { fill: #7a1f1a; }
+.bubble-label.gentry { fill: #2d3a5a; }
+
+#toggle-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 11;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  font-size: 18px;
+  color: #555;
+  transition: background 0.15s;
+  user-select: none;
+}
+#toggle-controls:hover { background: #f0f0f0; }
+#controls.hidden {
+  transform: translateX(-310px);
+  opacity: 0;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="container">
+  <svg id="graph">
+    <defs>
+      <marker id="arrow-default" viewBox="0 -5 10 10" refX="10" refY="0" markerWidth="14" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,-4L8,0L0,4" fill="#000000" opacity="0.85"></path>
+      </marker>
+      <marker id="arrow-core" viewBox="0 -5 10 10" refX="10" refY="0" markerWidth="14" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,-4L8,0L0,4" fill="#000000" opacity="0.95"></path>
+      </marker>
+      <marker id="arrow-brokered-result" viewBox="0 -5 10 10" refX="10" refY="0" markerWidth="14" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,-4L8,0L0,4" fill="#000000" opacity="0.85"></path>
+      </marker>
+    </defs>
+  </svg>
+
+  <div id="toggle-controls" title="Toggle controls">&#9776;</div>
+
+  <div id="controls">
+    <h1>The Fawsley Circle</h1>
+    <div class="subtitle">Richard Knightley's brokerage of the two Fawsley divines into a national puritan network, c. 1625&ndash;1639.</div>
+    <div class="hint">This diagram is larger than the screen. <strong>Drag the background</strong> to pan and <strong>scroll</strong> to zoom out for the full view.</div>
+    <div class="control-group">
+      <label>Search</label>
+      <input type="text" id="search-box" placeholder="Type a name...">
+    </div>
+    <div class="control-group">
+      <label>Label size <span id="label-size-value" style="font-weight:400; color:#888; text-transform:none; letter-spacing:0;">1.0&times;</span></label>
+      <input type="range" id="label-size-slider" min="0.5" max="3.0" step="0.05" value="1.0" style="width:100%; accent-color:#7a1f1a;">
+    </div>
+    <div class="control-group">
+      <label>Edge label size <span id="edge-label-size-value" style="font-weight:400; color:#888; text-transform:none; letter-spacing:0;">1.0&times;</span></label>
+      <input type="range" id="edge-label-size-slider" min="0.5" max="3.0" step="0.05" value="1.0" style="width:100%; accent-color:#7a1f1a;">
+    </div>
+    <div class="control-group">
+      <label>View</label>
+      <div class="btn-row">
+        <button class="ctrl-btn" id="btn-fit">Fit to screen</button>
+        <button class="ctrl-btn" id="btn-reset">Reset zoom</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats">
+    <span><strong id="stat-nodes">0</strong> people &middot; <strong id="stat-links">0</strong> ties</span>
+  </div>
+
+  <div id="legend">
+    <div class="legend-title">Legend</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#7a1f1a"></div><span class="legend-item-label">Richard Knightley</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3f5a32"></div><span class="legend-item-label">Clergy at Fawsley</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2d3a5a"></div><span class="legend-item-label">Gentry &amp; trustees</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#9b7a2e"></div><span class="legend-item-label">Other divines</span></div>
+    <div style="height:8px"></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#000000; border-radius:2px; width:22px; height:3px;"></div><span class="legend-item-label">Fawsley patronage</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background: repeating-linear-gradient(to right, #000000 0 5px, transparent 5px 8px); border-radius:2px; width:22px; height:2px;"></div><span class="legend-item-label">Dod&ndash;trustee tie</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#000000; border-radius:2px; width:22px; height:2px;"></div><span class="legend-item-label">Other connection</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background: repeating-linear-gradient(to right, #8a8a8a 0 2px, transparent 2px 9px); border-radius:2px; width:22px; height:2px;"></div><span class="legend-item-label">Kinship / family tie</span></div>
+  </div>
+
+  <div id="tooltip"></div>
+</div>
+
+<script>
+// ====== DATA ======
+const nodes = [
+  // Fawsley bubble
+  { id: "Richard Knightley", type: "center", label: "Richard Knightley", bubble: "fawsley" },
+  { id: "John Dod",    type: "clergy",  label: "John Dod",    bubble: "fawsley" },
+  { id: "John Preston",type: "clergy",  label: "John Preston", bubble: "fawsley" },
+
+  // Dod Trustees, 1630
+  { id: "Saye and Sele",        type: "trustee", label: "Saye and Sele",       bubble: "trustees" },
+  { id: "John Pym",             type: "trustee", label: "John Pym",            bubble: "trustees" },
+  { id: "John Hampden",         type: "trustee", label: "John Hampden",        bubble: "trustees" },
+  { id: "John Crewe of Steane Park",           type: "trustee", label: "John Crewe of Steane Park",          bubble: "trustees" },
+  { id: "Nathaniel Rich",       type: "trustee", label: "Nathaniel Rich",      bubble: "trustees" },
+  { id: "Christopher Sherland", type: "trustee", label: "Christopher Sherland",bubble: "trustees" },
+  { id: "Edward Bagshaw",       type: "trustee", label: "Edward Bagshaw",      bubble: "trustees" },
+  { id: "Arthur Hesilrige",     type: "trustee", label: "Arthur Hesilrige",    bubble: "trustees" },
+
+  // Northamptonshire Gentry
+  { id: "Sir Erasmus Dryden",      type: "gentry", label: "Sir Erasmus Dryden",     bubble: "gentry" },
+  { id: "Sir John Isham",          type: "gentry", label: "Sir John Isham",         bubble: "gentry" },
+  { id: "Elizabeth Isham",         type: "gentry", label: "Elizabeth Isham",        bubble: "gentry" },
+  { id: "Sir Francis Barrington",  type: "gentry", label: "Sir Francis Barrington", bubble: "gentry" },
+  { id: "Sir Robert Harley",       type: "gentry", label: "Sir Robert Harley",      bubble: "gentry" },
+  { id: "Lady Mary de Vere",       type: "gentry", label: "Lady Mary de Vere",      bubble: "gentry" },
+  { id: "Sir Thomas Crewe",        type: "gentry", label: "Sir Thomas Crewe",       bubble: "gentry" },
+
+  // Free-floating associates (top row)
+  { id: "John Cotton",     type: "associate", label: "John Cotton",     bubble: "free" },
+  { id: "Robert Cleaver",  type: "associate", label: "Robert Cleaver",  bubble: "free" },
+  { id: "Julines Herring", type: "associate", label: "Julines Herring", bubble: "free" },
+  { id: "Simeon Ashe",     type: "associate", label: "Simeon Ashe",     bubble: "free" },
+  { id: "Ephraim Huitt",   type: "associate", label: "Ephraim Huitt",   bubble: "free" },
+  { id: "John Ball",       type: "associate", label: "John Ball",       bubble: "free" },
+  { id: "John Wilkins",    type: "associate", label: "John Wilkins",    bubble: "free" },
+  { id: "Thomas Dugard",   type: "associate", label: "Thomas Dugard",   bubble: "free" },
+  { id: "Charles Chauncy", type: "associate", label: "Charles Chauncy", bubble: "free" },
+  { id: "John Randall",    type: "associate", label: "John Randall",    bubble: "free" },
+  { id: "Philip Holman",         type: "gentry",    label: "Philip Holman",         bubble: "free" },
+  { id: "Sir Gilbert Pickering", type: "gentry",    label: "Sir Gilbert Pickering", bubble: "free" },
+  { id: "Oliver Cromwell",       type: "gentry",    label: "Oliver Cromwell",       bubble: "free" },
+
+  // Preston's Cambridge & Court circle (left-side row)
+  { id: "John Davenant",                  type: "associate", label: "John Davenant",                  bubble: "preston-circle" },
+  { id: "Fulke Greville, Lord Brooke",    type: "associate", label: "Fulke Greville, Lord Brooke",    bubble: "preston-circle" },
+  { id: "Robert Greville, Baron Brooke",  type: "associate", label: "Robert Greville, Baron Brooke",  bubble: "preston-circle" },
+  { id: "Duke of Buckingham",             type: "associate", label: "Duke of Buckingham",             bubble: "preston-circle" },
+  { id: "Thomas Ball",                    type: "associate", label: "Thomas Ball",                    bubble: "preston-circle" },
+  { id: "Arthur Hildersham",              type: "associate", label: "Arthur Hildersham",              bubble: "preston-circle" },
+  { id: "Earl of Warwick",                type: "associate", label: "Earl of Warwick",                bubble: "preston-circle" },
+];
+
+const links = [
+  // ── Fawsley internal ──
+  { source: "Richard Knightley", target: "John Dod", kind: "core", tag: "Patron",
+    rel: "Patron; installed Dod at Fawsley (1625), set up trust (1630), titular incumbent (1637)",
+    quote: "In 1637 Knightley appointed first John Wilkins, who was Dod's grandson by marriage, and then Dod himself as titular incumbent of Fawsley. Knightley, to whom Dod had dedicated a grateful printed work in 1634, died in the same year." },
+  { source: "Richard Knightley", target: "John Preston", kind: "core", tag: "Patron",
+    rel: "Sheltered Preston at Fawsley to die (1628)",
+    quote: "Preston retired to Fawsley to die in 1628; Dod received a special mention in his will and preached at the funeral." },
+  { source: "John Preston", target: "John Dod", kind: "core", tag: "Close friends - Dod preached at funeral",
+    rel: "Special mention in Preston's will; Dod preached the funeral sermon",
+    quote: "Preston retired to Fawsley to die in 1628; Dod received a special mention in his will and preached at the funeral." },
+
+  // ── Dod → trustees ──
+  { source: "John Dod", target: "Saye and Sele", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod",
+    quote: "In 1630 Knightley set up a trust to support his protégé; trustees included Fiennes, Christopher Sherland, John Hampden, John Pym, John Crewe, Sir Nathaniel Rich, Edward Bagshaw, and Sir Arthur Hesilrige." },
+  { source: "John Dod", target: "Christopher Sherland", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … Christopher Sherland …" },
+  { source: "John Dod", target: "John Hampden", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … John Hampden …" },
+  { source: "John Dod", target: "John Pym", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … John Pym …" },
+  { source: "John Dod", target: "John Crewe of Steane Park", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … John Crewe …" },
+  { source: "John Dod", target: "Nathaniel Rich", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … Sir Nathaniel Rich …" },
+  { source: "John Dod", target: "Edward Bagshaw", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … Edward Bagshaw …" },
+  { source: "John Dod", target: "Arthur Hesilrige", kind: "brokered-result", tag: "Trustee",
+    rel: "Trustee of Knightley's 1630 trust for Dod", quote: "trustees included … Sir Arthur Hesilrige." },
+
+  // ── Dod's political action ──
+  { source: "John Dod", target: "Sir Francis Barrington", kind: "default", tag: "Supported in prison",
+    rel: "Preached at Fleet prison to stiffen Barrington's resolve against the Forced Loan (1626)",
+    quote: "Dod demonstrated his opposition to prerogative taxation by preaching a sermon at London's Fleet prison to stiffen the resolve of Sir Francis Barrington, the first to refuse to pay the forced loan of 1626." },
+
+  // ── Dryden–Isham marriage ──
+  { source: "John Dod", target: "Sir Erasmus Dryden", kind: "default", tag: "Marriage broker",
+    rel: "Acted as intermediary in the Dryden–Isham marriage negotiation (1630–31)",
+    quote: "In 1630–31 Dod operated as an intermediary between Sir Erasmus Dryden and Sir John Isham during their attempted negotiation of a marriage settlement for Dryden's grandson John (not the poet) and Isham's daughter Elizabeth." },
+  { source: "John Dod", target: "Sir John Isham", kind: "default", tag: "Marriage broker",
+    rel: "Intermediary in the Dryden–Isham marriage; Isham baulked at Dryden's chaplain demand",
+    quote: "Isham perhaps also baulked at Dryden's insistence that he employ a godly household chaplain approved by Knightley and 'worthely beloved Mr Dodd'." },
+  { source: "John Dod", target: "Elizabeth Isham", kind: "default", tag: "Marriage broker",
+    rel: "Elizabeth Isham was the bride in the abortive marriage Dod brokered",
+    quote: "a marriage settlement for Dryden's grandson John (not the poet) and Isham's daughter Elizabeth." },
+  { source: "Richard Knightley", target: "Sir Erasmus Dryden", kind: "default", tag: "Approved chaplain",
+    rel: "Knightley's approval (with Dod's) was required for any chaplain in the Dryden–Isham match",
+    quote: "Dryden's insistence that he employ a godly household chaplain approved by Knightley and 'worthely beloved Mr Dodd'." },
+  { source: "Richard Knightley", target: "Sir John Isham", kind: "default", tag: "Approved chaplain",
+    rel: "Knightley's approval required for any chaplain in the Dryden–Isham marriage",
+    quote: "Dryden's insistence that he employ a godly household chaplain approved by Knightley and 'worthely beloved Mr Dodd'." },
+
+  // ── Late patrons ──
+  { source: "John Dod", target: "Sir Robert Harley", kind: "default", tag: "Patron",
+    rel: "Knightley's son confirmed continued patronage of Dod to Harley (1639)",
+    quote: "his son and namesake continued to harbour the ageing evangelist, as he confirmed to another patron, Sir Robert Harley, in 1639." },
+  { source: "Richard Knightley", target: "Sir Robert Harley", kind: "default", tag: "Confirmed 1639",
+    rel: "Knightley's son and namesake confirmed continued patronage of Dod to Harley (1639)",
+    quote: "his son and namesake continued to harbour the ageing evangelist, as he confirmed to another patron, Sir Robert Harley, in 1639." },
+  { source: "John Dod", target: "Lady Mary de Vere", kind: "default", tag: "Patron",
+    rel: "Received support from Lady de Vere of London in his last years",
+    quote: "He also received the support of Lady Mary de Vere of London." },
+
+  // ── New England question ──
+  { source: "John Dod", target: "John Cotton", kind: "default", tag: "Condoned emigration",
+    rel: "Condoned Cotton's emigration when harassed by the courts (1632)",
+    quote: "when John Cotton was harassed by the courts in 1632 Dod condoned the young man's emigration." },
+
+  // ── 1637 Fawsley gathering — Dod worshipped with ──
+  { source: "John Dod", target: "Robert Cleaver", kind: "default", tag: "Worshiped with",
+    rel: "1637 Fawsley gathering of midlands clergy",
+    quote: "In 1637 Dod led a gathering of midlands clergy including his son Timothy, Cleaver, and Winston, Julines Herring, Simeon Ashe, Ephraim Huitt, and John Ball which controverted several points of colonial ecclesiology." },
+  { source: "John Dod", target: "Julines Herring", kind: "default", tag: "Worshiped with",
+    rel: "1637 Fawsley gathering of midlands clergy",
+    quote: "In 1637 Dod led a gathering of midlands clergy including ... Julines Herring, Simeon Ashe, Ephraim Huitt, and John Ball." },
+  { source: "John Dod", target: "Simeon Ashe", kind: "default", tag: "Worshiped with",
+    rel: "1637 Fawsley gathering of midlands clergy",
+    quote: "In 1637 Dod led a gathering of midlands clergy including ... Julines Herring, Simeon Ashe, Ephraim Huitt, and John Ball." },
+  { source: "John Dod", target: "Ephraim Huitt", kind: "default", tag: "Worshiped with",
+    rel: "1637 Fawsley gathering of midlands clergy",
+    quote: "In 1637 Dod led a gathering of midlands clergy including ... Julines Herring, Simeon Ashe, Ephraim Huitt, and John Ball." },
+  { source: "John Dod", target: "John Ball", kind: "default", tag: "Worshiped with",
+    rel: "1637 Fawsley gathering of midlands clergy",
+    quote: "In 1637 Dod led a gathering of midlands clergy including ... Julines Herring, Simeon Ashe, Ephraim Huitt, and John Ball." },
+
+  // ── Fawsley succession — Wilkins ──
+  { source: "Richard Knightley", target: "John Wilkins", kind: "default", tag: "Patron",
+    rel: "Appointed Wilkins as titular incumbent of Fawsley (1637)",
+    quote: "In 1637 Knightley appointed first John Wilkins, who was Dod's grandson by marriage, and then Dod himself as titular incumbent of Fawsley." },
+  { source: "John Dod", target: "John Wilkins", kind: "kinship", tag: "Grandson-in-law",
+    rel: "Wilkins was Dod's grandson by marriage",
+    quote: "In 1637 Knightley appointed first John Wilkins, who was Dod's grandson by marriage, and then Dod himself as titular incumbent of Fawsley." },
+
+  // ── Kinship ties ──
+  { source: "Sir John Isham", target: "Elizabeth Isham", kind: "kinship", tag: "Father and daughter",
+    rel: "Sir John Isham was Elizabeth Isham's father",
+    quote: "a marriage settlement for Dryden's grandson John (not the poet) and Isham's daughter Elizabeth." },
+
+  // ── Preston's Cambridge and Court circle ──
+  { source: "John Preston", target: "John Cotton", kind: "default", tag: "Sent students to live with",
+    rel: "Heard Cotton's plain evangelical sermon at St Mary's in 1611, beginning a lifelong religious friendship. Sent his church-bound students to Cotton at Boston.",
+    quote: "that close religious friendship began which permanently influenced the lives of both." },
+  { source: "John Preston", target: "John Davenant", kind: "default", tag: "Secured election",
+    rel: "Secured Davenant's election as master of Queens' in 1614 through a dash to court; later consulted him on Montagu in 1625",
+    quote: "his activity in securing the election (1614) of John Davenant as master of Queens' in succession to Tyndal." },
+  { source: "John Preston", target: "Fulke Greville, Lord Brooke", kind: "default", tag: "Firm friend",
+    rel: "Firm friend; settled £50 a year on Preston",
+    quote: "Sir Fulke Greville, first lord Brooke, became his firm friend (he ultimately settled 50l. a year upon him)." },
+  { source: "Fulke Greville, Lord Brooke", target: "Robert Greville, Baron Brooke", kind: "kinship", tag: "Adopted son",
+    rel: "Fulke Greville was succeeded by his adopted son Robert Greville as 2nd Baron Brooke",
+    quote: "Sir Fulke Greville, first lord Brooke, became his firm friend." },
+  { source: "John Preston", target: "Duke of Buckingham", kind: "default", tag: "Patron",
+    rel: "Made chaplain-in-ordinary to Prince Charles through Buckingham's interest; relationship later broke down as Preston could not draw the puritans to Buckingham's side",
+    quote: "Through Buckingham's interest he was made chaplain-in-ordinary to Prince Charles." },
+  { source: "John Preston", target: "Thomas Ball", kind: "default", tag: "Pupil and biographer",
+    rel: "Preston's favourite pupil and biographer; inherited his books and furniture",
+    quote: "left his books and furniture to Thomas Ball, his favourite pupil and his minute biographer." },
+  { source: "John Preston", target: "Arthur Hildersham", kind: "default", tag: "Helped obtain preaching license",
+    rel: "Obtained a general preaching licence for Hildersham on 20 June 1625",
+    quote: "He exerted influence on behalf of his puritan friends, obtaining a general preaching license (20 June 1625) for Arthur Hildersam." },
+  { source: "John Preston", target: "Earl of Warwick", kind: "default", tag: "Friendship",
+    rel: "Warwick had links with Preston (and was a very special friend of Richard Sibbes); part of a Cambridge–puritan divine network that also included the Riches",
+    quote: "Warwick had links with Preston, Gouge, and Sibbes (to whom he was 'a very special friend')." },
+
+  // ── Thomas Dugard (Warwick schoolmaster) ──
+  { source: "Thomas Dugard", target: "Richard Knightley", kind: "default", tag: "Preached before",
+    rel: "Preached before Knightley at Sherborne, Warwickshire in September 1637; also dined with Knightley at Warwick in early September 1635",
+    quote: "Dugard also records having preached in front of a 'Mr. Knigt.' at Sherborne in Warwickshire on the 10 September 1637. Knightley appears to have stayed in Warwick for around a week in early September 1635, dining with Dugard on the 3rd and 4th of September." },
+  { source: "Thomas Dugard", target: "John Pym", kind: "default", tag: "Dined with",
+    rel: "Dined with Pym at Warwick in September 1635 (alongside Knightley and Baron Brooke)",
+    quote: "Knightley appears to have stayed in Warwick for around a week in early September 1635, dining with Dugard on the 3rd and 4th of September - alongside John Pym and Baron Brooke the second time." },
+  { source: "Thomas Dugard", target: "Robert Greville, Baron Brooke", kind: "default", tag: "Installed at Warwick School",
+    rel: "Introduced to Brooke via Thomas Gataker in 1633; installed at Warwick School (in Brooke's provincial seat) shortly afterwards",
+    quote: "Through his Sidney connection, Thomas Gataker, he was introduced to Lord Brooke in 1633. After officiating at Brooke's London chapel for a week, he was swiftly installed (likely at Brooke's behest) at Warwick School in Brooke's provincial seat." },
+
+  // ── Wilkins & Wadham, chaplaincy, and Cromwell kinship ──
+  { source: "Richard Knightley", target: "John Wilkins", kind: "default", tag: "Installed as Warden at Wadham",
+    rel: "Knightley (with Saye and Sele) was among the parliamentary visitors who installed Wilkins as Warden of Wadham College, Oxford",
+    quote: "Saye and Knightley were among the parliamentary visitors who installed Wilkins as Warden of Wadham College, Oxford." },
+  { source: "Saye and Sele", target: "John Wilkins", kind: "default", tag: "Chaplain",
+    rel: "Wilkins served as chaplain to Viscount Saye and Sele",
+    quote: "Wilkins was chaplain to Viscount Saye and Sele." },
+  { source: "Saye and Sele", target: "John Wilkins", kind: "default", tag: "Installed as Warden at Wadham",
+    rel: "Saye (with Knightley) was among the parliamentary visitors who installed Wilkins as Warden of Wadham College, Oxford",
+    quote: "Saye and Knightley were among the parliamentary visitors who installed Wilkins as Warden of Wadham College, Oxford." },
+  { source: "John Wilkins", target: "Oliver Cromwell", kind: "kinship", tag: "Brother in law",
+    rel: "Wilkins married Oliver Cromwell's sister Robina in 1656, becoming Cromwell's brother-in-law",
+    quote: "He went on to marry Oliver Cromwell's sister Robina in 1656, and became both President of the Royal Society and a bishop after the Restoration." },
+
+  // ── Philip Holman, Northamptonshire sheriff & patron ──
+  { source: "Richard Knightley", target: "Philip Holman", kind: "default", tag: "Northamptonshire sheriff and ally",
+    rel: "Holman, Northamptonshire sheriff and lord of the manor of Warkworth, was a patron of godly ministers with connections to Knightley",
+    quote: "Holman also enjoyed godly connections with John Crewe, Richard Knightley, Lord Saye, Thomas Ball, and Edward Reynolds." },
+  { source: "Saye and Sele", target: "Philip Holman", kind: "default", tag: "Ally",
+    rel: "Holman enjoyed godly connections with Lord Saye and Sele",
+    quote: "Holman also enjoyed godly connections with John Crewe, Richard Knightley, Lord Saye, Thomas Ball, and Edward Reynolds." },
+  { source: "Thomas Ball", target: "Philip Holman", kind: "default", tag: "Ally",
+    rel: "Holman enjoyed godly connections with Thomas Ball",
+    quote: "Holman also enjoyed godly connections with John Crewe, Richard Knightley, Lord Saye, Thomas Ball, and Edward Reynolds." },
+  { source: "Philip Holman", target: "Charles Chauncy", kind: "default", tag: "Appointed 1633",
+    rel: "Holman appointed Chauncy, the vocal opponent of Laudian altar policy, as minister at Marston St Lawrence in 1633",
+    quote: "in 1633 he had appointed Charles Chauncy, the vocal opponent of Laudian altar policy, who preached at Warkworth before emigrating to New England in 1638." },
+
+  // ── Charles Chauncy's link to Dugard via Saye ──
+  { source: "Thomas Dugard", target: "Charles Chauncy", kind: "default", tag: "Associated through Saye and Sele",
+    rel: "Dugard met Chauncy at Lord Saye's shortly before Chauncy emigrated to New England in 1638",
+    quote: "Dugard had met with the Northamptonshire minister Charles Chauncy at Lord Saye's shortly before he left for New England." },
+
+  // ── Sir Gilbert Pickering — Cambridge puritan ──
+  { source: "John Preston", target: "Sir Gilbert Pickering", kind: "default", tag: "Taught at Cambridge",
+    rel: "Pickering's father sent him to study under Preston at Cambridge",
+    quote: "Pickering's father … sent his son to study under John Preston (and later Thomas Ball) at Cambridge." },
+  { source: "Thomas Ball", target: "Sir Gilbert Pickering", kind: "default", tag: "Taught at Cambridge",
+    rel: "Pickering studied under Thomas Ball at Cambridge after Preston",
+    quote: "Pickering's father … sent his son to study under John Preston (and later Thomas Ball) at Cambridge." },
+
+  // ── John Randall — dedicated sermon ──
+  { source: "John Randall", target: "Richard Knightley", kind: "default", tag: "Dedicated posthumous sermon",
+    rel: "Randall, London minister and tutor to Robert Bolton, had a posthumously published sermon of 1631 dedicated to Knightley",
+    quote: "John Randall (1570–1622), a London minister born at Great Missenden. He acted as tutor to the Northamptonshire puritan divine Robert Bolton at Lincoln College, Oxford, and a posthumously published sermon of 1631 was dedicated to Richard Knightley." },
+
+  // ── John Crewe as executor of Knightley's estate ──
+  { source: "John Crewe of Steane Park", target: "Richard Knightley", kind: "default", tag: "Executor of estate",
+    rel: "John Crewe of Steane Park served as one of the executors of Knightley's estate upon his death",
+    quote: "John Crewe, the latter of whom would serve as one of the executors of Knightley's estate upon his death." },
+
+  // ── Sir Thomas Crewe — puritan opposition network ──
+  { source: "Sir Thomas Crewe", target: "John Crewe of Steane Park", kind: "kinship", tag: "Father and son",
+    rel: "Sir Thomas Crewe was John Crewe's father; Speaker of the House of Commons (d. 1634)",
+    quote: "John Crewe of Steane Park was the son of Sir Thomas Crewe (d. 1634), Speaker of the House of Commons, who had pursued a career in opposition to government policy." },
+  { source: "Sir Thomas Crewe", target: "Richard Knightley", kind: "default", tag: "Close friends",
+    rel: "Member of the puritan network of opposition to government policy which included Knightley",
+    quote: "He had been a member of a powerful puritan network of opposition to government policy which had included Lord Saye and Sele, Richard Knightley, and Christopher Sherland." },
+  { source: "Sir Thomas Crewe", target: "Saye and Sele", kind: "default", tag: "Close friends",
+    rel: "Member of the puritan network of opposition to government policy which included Saye and Sele",
+    quote: "He had been a member of a powerful puritan network of opposition to government policy which had included Lord Saye and Sele, Richard Knightley, and Christopher Sherland." },
+  { source: "Sir Thomas Crewe", target: "Christopher Sherland", kind: "default", tag: "Close friends",
+    rel: "Member of the puritan network of opposition to government policy which included Sherland",
+    quote: "He had been a member of a powerful puritan network of opposition to government policy which had included Lord Saye and Sele, Richard Knightley, and Christopher Sherland." },
+];
+
+// ====== VISUAL CONSTANTS ======
+const nodeFill = {
+  center: "#7a1f1a",
+  clergy: "#3f5a32",
+  trustee: "#2d3a5a",
+  gentry: "#2d3a5a",
+  associate: "#9b7a2e",
+};
+const nodeRadius = {
+  center: 32, clergy: 24, trustee: 14, gentry: 14, associate: 12,
+};
+
+// ====== LARGE FIXED CANVAS ======
+// The diagram lives on a fixed 5200 x 3000 canvas — intentionally much larger than the viewport.
+// The SVG viewBox fits this into the screen; user pans/zooms to inspect.
+const W = 5200;
+const H = 3200;
+
+const svg = d3.select("#graph").attr("viewBox", [0, 0, W, H]);
+
+const zoom = d3.zoom().scaleExtent([0.15, 4]).on("zoom", ({ transform }) => g.attr("transform", transform));
+svg.call(zoom).on("dblclick.zoom", null);
+
+const g = svg.append("g");
+const bubbleGroup = g.append("g").attr("class", "bubbles");
+const linkGroup = g.append("g").attr("class", "links");
+const linkLabelGroup = g.append("g").attr("class", "link-labels");
+const nodeGroup = g.append("g").attr("class", "nodes");
+const tooltip = d3.select("#tooltip");
+
+// Fit-to-screen: compute a transform that shows the whole 3200x1800 canvas
+function fitToScreen() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  // Leave a margin
+  const scale = Math.min(vw / W, vh / H) * 0.92;
+  const tx = (vw - W * scale) / 2;
+  const ty = (vh - H * scale) / 2;
+  // Convert from DOM pixels to SVG coordinates for d3.zoom
+  // We need to compute the corresponding transform in the viewBox coordinate system
+  const svgEl = svg.node();
+  const ctm = svgEl.getScreenCTM();
+  // Work in viewBox pixels — the zoom transform is applied in viewBox coords
+  // viewBox is 0 0 W H, rendered at vw x vh
+  const vbScale = Math.min(vw / W, vh / H);
+  // The zoom.transform applies on top of this. We want final scale = vbScale * 0.92 matching the full view,
+  // which effectively means k=0.92 on the zoom.
+  svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.scale(0.92).translate((W / 0.92 - W) / 2, (H / 0.92 - H) / 2 * 0));
+}
+
+function resetZoom() {
+  svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+}
+
+document.getElementById("btn-fit").addEventListener("click", fitToScreen);
+document.getElementById("btn-reset").addEventListener("click", resetZoom);
+
+// ====== BUBBLES ======
+const bubbles = {
+  gentry:   { cls: "gentry",   title: "Northamptonshire Gentry" },
+  fawsley:  { cls: "fawsley",  title: "Lived at Fawsley" },
+  trustees: { cls: "trustees", title: "Knightley's Trustees for Dod, 1630" },
+};
+for (const key of Object.keys(bubbles)) {
+  const b = bubbles[key];
+  b.circle = bubbleGroup.append("circle").attr("class", `bubble ${b.cls}`);
+  b.label  = bubbleGroup.append("text").attr("class", `bubble-label ${b.cls}`).text(b.title);
+}
+
+let searchTerm = "";
+d3.select("#search-box").on("input", function() {
+  searchTerm = this.value.toLowerCase().trim();
+  render();
+});
+
+// Label size slider — updates --label-scale CSS variable live, no re-render needed
+const labelSlider = document.getElementById('label-size-slider');
+const labelValueEl = document.getElementById('label-size-value');
+labelSlider.addEventListener('input', function() {
+  const scale = parseFloat(this.value);
+  document.documentElement.style.setProperty('--label-scale', scale);
+  labelValueEl.textContent = scale.toFixed(2) + '\u00D7';
+});
+// Initialise the CSS variable
+document.documentElement.style.setProperty('--label-scale', 1.0);
+
+// Edge label size slider — updates --edge-label-scale CSS variable live
+const edgeLabelSlider = document.getElementById('edge-label-size-slider');
+const edgeLabelValueEl = document.getElementById('edge-label-size-value');
+edgeLabelSlider.addEventListener('input', function() {
+  const scale = parseFloat(this.value);
+  document.documentElement.style.setProperty('--edge-label-scale', scale);
+  edgeLabelValueEl.textContent = scale.toFixed(2) + '\u00D7';
+});
+document.documentElement.style.setProperty('--edge-label-scale', 1.0);
+
+document.getElementById('toggle-controls').addEventListener('click', function() {
+  const controls = document.getElementById('controls');
+  controls.classList.toggle('hidden');
+  this.innerHTML = controls.classList.contains('hidden') ? '&#9776;' : '&#10005;';
+});
+
+// ====== STATIC LAYOUT ======
+// Canvas reads top → middle → bottom:
+//   TOP ROW (~8 nodes): associates connecting mostly to Preston, Cambridge/Court circle, gentry bubble
+//   MIDDLE: three bubbles (Gentry | Fawsley | Trustees)
+//   BOTTOM ROW (~9 nodes): associates connecting mostly to Dod, Knightley, trustees
+
+// Top free-associate row (above the bubbles)
+const TOP_FREE_Y = 350;
+
+// Three bubbles sit in the middle of the canvas
+const BUBBLE_Y = 1600;
+
+// Bottom free-associate row (below the bubbles)
+const BOTTOM_FREE_Y = 2850;
+
+const FAWSLEY_CX = 2600;  // centre
+const GENTRY_CX  = 750;   // left
+const TRUSTEES_CX = 4450; // right
+
+const FAWSLEY_R  = 550;
+const GENTRY_R   = 650;
+const TRUSTEES_R = 720;
+
+function layout() {
+  // Draw the bubbles
+  bubbles.fawsley.circle.attr("cx", FAWSLEY_CX).attr("cy", BUBBLE_Y).attr("r", FAWSLEY_R);
+  bubbles.fawsley.label.attr("x", FAWSLEY_CX).attr("y", BUBBLE_Y - FAWSLEY_R - 22);
+  bubbles.gentry.circle.attr("cx", GENTRY_CX).attr("cy", BUBBLE_Y).attr("r", GENTRY_R);
+  bubbles.gentry.label.attr("x", GENTRY_CX).attr("y", BUBBLE_Y - GENTRY_R - 22);
+  bubbles.trustees.circle.attr("cx", TRUSTEES_CX).attr("cy", BUBBLE_Y).attr("r", TRUSTEES_R);
+  bubbles.trustees.label.attr("x", TRUSTEES_CX).attr("y", BUBBLE_Y - TRUSTEES_R - 22);
+
+  // Fawsley: Knightley top, Preston lower-LEFT (away from trustees), Dod lower-RIGHT (facing trustees)
+  nodes.find(n => n.id === "Richard Knightley").x = FAWSLEY_CX;
+  nodes.find(n => n.id === "Richard Knightley").y = BUBBLE_Y - 220;
+  nodes.find(n => n.id === "John Preston").x = FAWSLEY_CX - 280;
+  nodes.find(n => n.id === "John Preston").y = BUBBLE_Y + 180;
+  nodes.find(n => n.id === "John Dod").x = FAWSLEY_CX + 280;
+  nodes.find(n => n.id === "John Dod").y = BUBBLE_Y + 180;
+
+  // Trustees: 2-col x 4-row grid with very generous spacing
+  const trusteeOrder = [
+    "Saye and Sele",        "John Pym",
+    "John Hampden",         "John Crewe of Steane Park",
+    "Nathaniel Rich",       "Christopher Sherland",
+    "Edward Bagshaw",       "Arthur Hesilrige",
+  ];
+  const tPadX = 290;   // half-width between columns
+  const tPadY = 430;   // half-height of grid
+  const tRowH = (2 * tPadY) / 3;   // 4 rows => 3 gaps
+  trusteeOrder.forEach((id, i) => {
+    const node = nodes.find(n => n.id === id);
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    node.x = TRUSTEES_CX - tPadX + col * (2 * tPadX);
+    node.y = BUBBLE_Y - tPadY + row * tRowH;
+  });
+
+  // Gentry: 2-col x 4-row grid (7 members — last row has single entry, placed centrally)
+  const gentryOrder = [
+    "Sir Erasmus Dryden",      "Sir John Isham",
+    "Elizabeth Isham",         "Sir Francis Barrington",
+    "Sir Robert Harley",       "Lady Mary de Vere",
+    "Sir Thomas Crewe",
+  ];
+  const gPadX = 270;
+  const gPadY = 450;
+  const gRowH = (2 * gPadY) / 3;   // 4 rows => 3 gaps
+  gentryOrder.forEach((id, i) => {
+    const node = nodes.find(n => n.id === id);
+    const row = Math.floor(i / 2);
+    const isLastSingle = (i === gentryOrder.length - 1) && (gentryOrder.length % 2 === 1);
+    if (isLastSingle) {
+      // Centre the last single entry
+      node.x = GENTRY_CX;
+    } else {
+      const col = i % 2;
+      node.x = GENTRY_CX - gPadX + col * (2 * gPadX);
+    }
+    node.y = BUBBLE_Y - gPadY + row * gRowH;
+  });
+
+  // === BALANCED TOP/BOTTOM SPLIT ===
+  // Nodes assigned to top or bottom based on which half of the canvas their connections flow from.
+  // Within each row, horizontal order chosen to minimise line crossings:
+  //   - Gentry-connected on the LEFT
+  //   - Fawsley / Preston / Knightley in the MIDDLE
+  //   - Trustees / Dod-clergy on the RIGHT
+  //
+  // All free + preston-circle nodes are placed through these arrays.
+
+  // TOP row — left-to-right ordering chosen to align with each node's connection point
+  const topRowOrder = [
+    "Arthur Hildersham",              // connects to Preston (Fawsley) — left
+    "John Davenant",                  // connects to Preston — centre-left
+    "Fulke Greville, Lord Brooke",    // connects to Preston — centre
+    "Robert Greville, Baron Brooke",  // kinship to Fulke + edge from Dugard — centre
+    "Earl of Warwick",                // connects to Preston — centre
+    "Duke of Buckingham",             // Preston's court patron — centre-right
+    "Thomas Ball",                    // connects to Preston, Holman, Pickering — right
+    "Sir Gilbert Pickering",          // connects to Preston and Thomas Ball — right
+    "John Cotton",                    // connects to Dod + Preston — far right
+  ];
+
+  // BOTTOM row — left-to-right ordering
+  const bottomRowOrder = [
+    "John Randall",                   // connects to Knightley — centre-left
+    "Thomas Dugard",                  // connects to Knightley, Pym, Brooke, Chauncy — centre-left
+    "Philip Holman",                  // connects to Knightley, Saye, Ball, Chauncy — centre
+    "Charles Chauncy",                // connects to Holman + Dugard — centre
+    "John Wilkins",                   // connects to Dod, Knightley, Saye, Cromwell — centre-right
+    "Oliver Cromwell",                // kinship to Wilkins — centre-right
+    "Robert Cleaver",                 // connects to Dod (Fawsley centre) — right
+    "Julines Herring",                // connects to Dod — right
+    "Simeon Ashe",                    // connects to Dod — right
+    "Ephraim Huitt",                  // connects to Dod — right
+    "John Ball",                      // connects to Dod — far right
+  ];
+
+  // Place the top row with a ZIG-ZAG vertical stagger
+  // — alternating nodes sit higher/lower for a clear staggered rhythm.
+  const topLeftMargin = 400;
+  const topAvailableW = W - 2 * topLeftMargin;
+  const topZigAmplitude = 140;  // vertical offset for zig-zag
+  topRowOrder.forEach((id, i) => {
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+    const t = (i + 0.5) / topRowOrder.length;  // 0..1 across row
+    node.x = topLeftMargin + t * topAvailableW;
+    // Even-indexed nodes sit higher (further from bubbles), odd-indexed sit lower
+    node.y = TOP_FREE_Y + (i % 2 === 0 ? -topZigAmplitude : topZigAmplitude);
+  });
+
+  // Place the bottom row with a ZIG-ZAG vertical stagger
+  const bottomLeftMargin = 300;
+  const bottomAvailableW = W - 2 * bottomLeftMargin;
+  const bottomZigAmplitude = 140;
+  bottomRowOrder.forEach((id, i) => {
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+    const t = (i + 0.5) / bottomRowOrder.length;
+    node.x = bottomLeftMargin + t * bottomAvailableW;
+    // Even-indexed sit lower (further from bubbles), odd-indexed sit higher
+    node.y = BOTTOM_FREE_Y + (i % 2 === 0 ? bottomZigAmplitude : -bottomZigAmplitude);
+  });
+}
+
+// ====== RENDER ======
+function render() {
+  layout();
+
+  // Filter by search
+  const filteredNodes = nodes.filter(n => {
+    if (!searchTerm) return true;
+    return n.label.toLowerCase().includes(searchTerm);
+  });
+  const baseIds = new Set(["Richard Knightley", "John Dod", "John Preston"]);
+  nodes.forEach(n => { if (baseIds.has(n.id) && !filteredNodes.includes(n)) filteredNodes.push(n); });
+  const nodeIds = new Set(filteredNodes.map(n => n.id));
+  const nodeLookup = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const filteredLinks = links.filter(l => {
+    const s = typeof l.source === "object" ? l.source.id : l.source;
+    const t = typeof l.target === "object" ? l.target.id : l.target;
+    return nodeIds.has(s) && nodeIds.has(t);
+  });
+  filteredLinks.forEach(l => {
+    if (typeof l.source === "string") l.source = nodeLookup[l.source];
+    if (typeof l.target === "string") l.target = nodeLookup[l.target];
+  });
+
+  d3.select("#stat-nodes").text(filteredNodes.length);
+  d3.select("#stat-links").text(filteredLinks.length);
+
+  // ── Render links as PATH elements so we can run text along them ──
+  linkGroup.selectAll("path").remove();
+  const linkSel = linkGroup.selectAll("path").data(filteredLinks).enter().append("path")
+    .attr("id", (d, i) => `edge-${i}`)
+    .attr("class", d => `link-path ${d.kind}`)
+    .attr("marker-end", d => d.kind === "kinship" ? null : `url(#arrow-${d.kind})`)
+    .attr("d", d => {
+      const sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
+      const dx = tx - sx, dy = ty - sy;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const rS = (nodeRadius[d.source.type] || 6) + 6;
+      const arrowPad = d.kind === "kinship" ? 6 : 18;   // kinship has no arrow, so less padding
+      const rT = (nodeRadius[d.target.type] || 6) + arrowPad;
+      const x1 = sx + (dx / dist) * rS;
+      const y1 = sy + (dy / dist) * rS;
+      const x2 = tx - (dx / dist) * rT;
+      const y2 = ty - (dy / dist) * rT;
+      // For paths flowing right-to-left, reverse so text doesn't appear upside-down
+      if (x2 < x1) {
+        return `M ${x2} ${y2} L ${x1} ${y1}`;
+      }
+      return `M ${x1} ${y1} L ${x2} ${y2}`;
+    });
+
+  // ── Render link labels that RUN ALONG the path ──
+  linkLabelGroup.selectAll("text").remove();
+  const linkLabelSel = linkLabelGroup.selectAll("text")
+    .data(filteredLinks).enter().append("text")
+    .attr("class", "link-label")
+    .attr("dy", -12);  // offset above the line
+  linkLabelSel.append("textPath")
+    .attr("href", (d, i) => `#edge-${i}`)
+    .attr("startOffset", "50%")
+    .attr("text-anchor", "middle")
+    .text(d => d.tag || "");
+
+  // ── Render nodes ──
+  nodeGroup.selectAll("g.node-group").remove();
+  const nodeSel = nodeGroup.selectAll("g.node-group").data(filteredNodes, d => d.id).enter().append("g")
+    .attr("class", "node-group")
+    .attr("transform", d => `translate(${d.x},${d.y})`);
+
+  nodeSel.append("circle")
+    .attr("class", "node-circle")
+    .attr("r", d => nodeRadius[d.type] || 5)
+    .attr("fill", d => nodeFill[d.type] || "#666");
+
+  nodeSel.append("text")
+    .attr("class", d => {
+      if (d.type === "center") return "node-label central";
+      if (d.type === "clergy") return "node-label clergy";
+      return "node-label";
+    })
+    .attr("dy", d => (nodeRadius[d.type] || 5) + 40)
+    .text(d => d.label);
+
+  // ── Interaction ──
+  nodeSel.on("mouseover", (event, d) => {
+    const connIds = new Set([d.id]);
+    const connLinkIdx = new Set();
+    filteredLinks.forEach((l, i) => {
+      const s = l.source.id, t = l.target.id;
+      if (s === d.id || t === d.id) { connIds.add(s); connIds.add(t); connLinkIdx.add(i); }
+    });
+    linkSel.classed("dimmed", (_, i) => !connLinkIdx.has(i))
+           .classed("highlighted", (_, i) => connLinkIdx.has(i));
+    linkLabelGroup.selectAll("text").style("opacity", (_, i) => connLinkIdx.has(i) ? 1 : 0.08);
+    nodeSel.classed("dimmed", n => !connIds.has(n.id));
+    tooltip.html(`<div class="tip-name">${d.id}</div>
+      <div style="font-size:11px; color:#777;">${connLinkIdx.size} connection${connLinkIdx.size === 1 ? '' : 's'}</div>`)
+      .style("opacity", 1);
+  })
+  .on("mousemove", (event) => {
+    tooltip.style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 14) + "px");
+  })
+  .on("mouseout", () => {
+    linkSel.classed("highlighted", false).classed("dimmed", false);
+    linkLabelGroup.selectAll("text").style("opacity", 1);
+    nodeSel.classed("dimmed", false);
+    tooltip.style("opacity", 0);
+  });
+
+  linkSel.on("mouseover", (event, d) => {
+    linkSel.classed("dimmed", l => l !== d);
+    linkSel.filter(l => l === d).classed("highlighted", true);
+    linkLabelGroup.selectAll("text").style("opacity", l => l === d ? 1 : 0.08);
+    tooltip.html(`<div class="tip-name">${d.source.id} &rarr; ${d.target.id}</div>
+      <div class="tip-rel">${d.rel}</div>
+      <div class="tip-quote">${d.quote}</div>`)
+      .style("opacity", 1);
+  })
+  .on("mousemove", (event) => {
+    tooltip.style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 14) + "px");
+  })
+  .on("mouseout", () => {
+    linkSel.classed("highlighted", false).classed("dimmed", false);
+    linkLabelGroup.selectAll("text").style("opacity", 1);
+    tooltip.style("opacity", 0);
+  });
+}
+
+render();
+
+// On load, fit to screen so user sees the full diagram first
+setTimeout(() => {
+  // Zoom out to show the whole canvas
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  // The viewBox already covers 0,0 -> W,H, so the default view is already the whole canvas
+  // Just set to identity for clarity
+  svg.call(zoom.transform, d3.zoomIdentity);
+}, 50);
+
+window.addEventListener("resize", () => {
+  // Canvas is fixed; viewport just resizes. No re-layout needed.
+});
+</script>
+</body>
+</html>
